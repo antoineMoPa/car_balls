@@ -1,0 +1,16 @@
+[package]
+name    = "example-using-rapier"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+rapier3d = "0.15.0"
+bevy = "0.8.1"
+bevy_rapier3d = "0.18.0"
+
+[[bin]]
+name = "main"
+path = "./main.rs"
+
+[profile.dev.package.bevy_rapier3d]
+opt-level = 3
