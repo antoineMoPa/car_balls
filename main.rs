@@ -1,14 +1,24 @@
-use bevy::prelude::*;
+use bevy::{
+    input::{keyboard::KeyCode, Input},
+    prelude::*,
+};
 use bevy_rapier3d::prelude::*;
+
+#[derive(Default)]
+struct Game {
+    player_car: Option<Entity>,
+}
 
 fn main() {
     App::new()
+        .init_resource::<Game>()
         .add_plugins(DefaultPlugins)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_dynamic_objects)
         .add_system(print_ball_altitude)
+        .add_system(keyboard_input_system)
         .run();
 }
 
@@ -20,7 +30,18 @@ fn setup_graphics(mut commands: Commands) {
     });
 }
 
-fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn keyboard_input_system(keyboard_input: Res<Input<KeyCode>>, time: Res<Time>, mut transforms: Query<&mut Transform>, game: ResMut<Game>) {
+    if keyboard_input.pressed(KeyCode::W) {
+        if let Some(entity) = game.player_car {
+            if let Ok(mut transform) = transforms.get_mut(entity) {
+                transform.rotate_y(time.delta_seconds());
+                transform.scale = Vec3::splat(1.0 + (1.0 / 10.0 * time.delta_seconds().sin()).abs());
+            }
+        }
+    }
+}
+
+fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
     /* Create the ground. */
     commands
         .spawn()
@@ -32,11 +53,11 @@ fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>)
 
     // to position our 3d model, simply use the Transform
     // in the SceneBundle
-    commands.spawn_bundle(SceneBundle {
+    game.player_car = Some(commands.spawn_bundle(SceneBundle {
         scene: my_gltf,
         transform: Transform::from_xyz(2.0, 0.0, -5.0),
         ..Default::default()
-    });
+    }).id());
 
     commands
         .spawn()
