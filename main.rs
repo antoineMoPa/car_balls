@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use bevy::{
     input::{keyboard::KeyCode, Input},
     prelude::*,
@@ -30,14 +32,55 @@ fn setup_graphics(mut commands: Commands) {
     });
 }
 
-fn keyboard_input_system(keyboard_input: Res<Input<KeyCode>>, time: Res<Time>, mut transforms: Query<&mut Transform>, game: ResMut<Game>) {
-    if keyboard_input.pressed(KeyCode::W) {
-        if let Some(entity) = game.player_car {
-            if let Ok(mut transform) = transforms.get_mut(entity) {
-                transform.rotate_y(time.delta_seconds());
-                transform.scale = Vec3::splat(1.0 + (1.0 / 10.0 * time.delta_seconds().sin()).abs());
-            }
+fn keyboard_input_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    mut transforms: Query<&mut Transform>,
+    game: ResMut<Game>,
+    mut ext_forces: Query<&mut ExternalForce>,
+) {
+    let entity = match game.player_car {
+        Some(entity) => entity,
+        _ => {
+            return;
         }
+    };
+    let mut ext_force = match ext_forces.get_mut(entity) {
+        Ok(ext_force) => ext_force,
+        _ => {
+            return;
+        }
+    };
+    let transform = match transforms.get_mut(entity) {
+        Ok(transform) => transform,
+        _ => {
+            return;
+        }
+    };
+
+    // Apply forces
+    let forward_speed: f32 = 100.0;
+    let backward_speed: f32 = -40.0;
+    if keyboard_input.pressed(KeyCode::W) {
+        ext_force.force = transform.forward().mul(Vec3 { x: forward_speed, y: forward_speed, z: forward_speed });
+        ext_force.torque = Vec3::new(0.0, 0.0, 0.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::S) {
+        ext_force.force = transform.forward().mul(Vec3 { x: backward_speed, y: backward_speed, z: backward_speed });
+        ext_force.torque = Vec3::new(0.0, 0.0, 0.0);
+    }
+
+    let torque: f32 = 3.0;
+
+    if keyboard_input.pressed(KeyCode::A) {
+        ext_force.force = Vec3::new(0.0, 0.0, 0.0);
+        ext_force.torque = Vec3::new(0.0, torque, 0.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::D) {
+        ext_force.force = Vec3::new(0.0, 0.0, 0.0);
+        ext_force.torque = Vec3::new(0.0, -torque, 0.0);
     }
 }
 
@@ -53,11 +96,24 @@ fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>,
 
     // to position our 3d model, simply use the Transform
     // in the SceneBundle
-    game.player_car = Some(commands.spawn_bundle(SceneBundle {
-        scene: my_gltf,
-        transform: Transform::from_xyz(2.0, 0.0, -5.0),
-        ..Default::default()
-    }).id());
+
+    game.player_car =
+        Some(
+            commands
+                .spawn_bundle(SceneBundle {
+                    scene: my_gltf,
+                    transform: Transform::from_xyz(2.0, 0.0, -5.0),
+                    ..Default::default()
+                })
+                .insert(RigidBody::Dynamic)
+                .insert(Collider::cuboid(0.5, 0.5, 0.5))
+                .insert(ColliderMassProperties::Density(2.0))
+                .insert(Damping { linear_damping: 0.8, angular_damping: 0.4 })
+                .insert(ExternalForce {
+                    force: Vec3::new(0.0, 0.0, 0.0),
+                    torque: Vec3::new(0.0, 0.0, 0.0),
+                })
+                .id());
 
     commands
         .spawn()
