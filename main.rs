@@ -7,9 +7,15 @@ use bevy::{
 use bevy_rapier3d::prelude::*;
 
 #[derive(Default)]
+struct CameraTarget {
+    position: Option<Vec3>,
+    look_at: Option<Vec3>,
+}
+
+#[derive(Default)]
 struct Game {
     player_car: Option<Entity>,
-    camera_follow: Option<Vec3>,
+    camera_target: CameraTarget,
     camera: Option<Entity>,
 }
 
@@ -23,8 +29,8 @@ fn main() {
         .add_startup_system(setup_dynamic_objects)
         .add_system(print_ball_altitude)
         .add_system(keyboard_input_system)
-        .add_system(camera_follow_car_system)
-        .add_system(camera_follow_target_system)
+        .add_system(camera_target_car_system)
+        .add_system(camera_target_target_system)
         .run();
 }
 
@@ -92,7 +98,7 @@ fn keyboard_input_system(
 }
 
 
-fn camera_follow_car_system(
+fn camera_target_car_system(
     mut transforms: Query<&mut Transform>,
     mut game: ResMut<Game>,
 ) {
@@ -108,31 +114,20 @@ fn camera_follow_car_system(
             return;
         }
     };
-    game.camera_follow = Some(car_transform.translation);
+    game.camera_target.look_at = Some(car_transform.translation);
+    game.camera_target.position = Some(car_transform.translation + car_transform.forward() * -20.0 + (car_transform.up() * 5.0));
 }
 
-fn camera_follow_target_system(
+fn camera_target_target_system(
     mut transforms: Query<&mut Transform>,
     game: ResMut<Game>,
 ) {
-    let camera_entity = match game.camera {
-        Some(entity) => entity,
-        _ => {
-            return;
-        }
-    };
-    let mut camera_transform = match transforms.get_mut(camera_entity) {
-        Ok(camera_transform) => camera_transform,
-        _ => {
-            return;
-        }
-    };
-    match game.camera_follow {
-        Some(camera_follow) => camera_transform.look_at(camera_follow, Vec3::Y),
-        _ => {
-            return;
-        }
-    }
+    let camera_entity = match game.camera { Some(x) => x, _ => { return; } };
+    let mut camera_transform = match transforms.get_mut(camera_entity) { Ok(x) => x, _ => { return; } };
+    let camera_target_look_at = match game.camera_target.look_at { Some(x) => x, _ => { return; } };
+    let camera_target_position = match game.camera_target.position { Some(x) => x, _ => { return; } };
+    camera_transform.look_at(camera_target_look_at, Vec3::Y);
+    camera_transform.translation = camera_target_position;
 }
 
 fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
