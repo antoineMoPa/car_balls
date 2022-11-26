@@ -205,15 +205,19 @@ fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>,
                 })
                 .id());
 
-    for i in 1..15 {
-        for j in 1..15 {
+    let ball_amount_per_dimension = 30;
+
+    for i in 1..ball_amount_per_dimension {
+        for j in 1..ball_amount_per_dimension {
+            let space = 2.0;
+            let offset = space * (ball_amount_per_dimension as f32) / 2.0;
             commands
                 .spawn()
                 .insert(RigidBody::Dynamic)
                 .insert(Collider::ball(0.5))
                 .insert(Restitution::coefficient(0.7))
                 .insert(ColliderMassProperties::Density(0.02))
-                .insert_bundle(TransformBundle::from(Transform::from_xyz(i as f32 * 2.0, 4.0, j as f32 * 2.0)));
+                .insert_bundle(TransformBundle::from(Transform::from_xyz(i as f32 * space - offset, 4.0, j as f32 * space - offset)));
         }
     }
 }
