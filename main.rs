@@ -1,7 +1,8 @@
-use std::ops::Mul;
+use std::{ops::Mul};
 
 use bevy::{
     input::{keyboard::KeyCode, Input},
+    pbr::DirectionalLightShadowMap,
     prelude::*,
 };
 use bevy_rapier3d::prelude::*;
@@ -9,6 +10,7 @@ use bevy_rapier3d::prelude::*;
 #[derive(Default)]
 struct CameraTarget {
     position: Option<Vec3>,
+    up: Option<Vec3>,
     look_at: Option<Vec3>,
 }
 
@@ -22,6 +24,12 @@ struct Game {
 fn main() {
     App::new()
         .init_resource::<Game>()
+        .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
+        .insert_resource(DirectionalLightShadowMap { size: 2048 })
+        .insert_resource(AmbientLight {
+            color: Color::rgb(0.6, 0.4, 0.5),
+            brightness: 0.6,
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
@@ -36,18 +44,32 @@ fn main() {
 
 fn setup_graphics(
     mut commands: Commands,
-    mut game: ResMut<Game>
+    mut game: ResMut<Game>,
 ) {
     game.camera = Some(
         commands.spawn_bundle(Camera3dBundle {
             transform: Transform::from_xyz(-3.0, 3.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         }).id());
+
+    commands.spawn_bundle(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            shadows_enabled: true,
+            illuminance: 1000.0,
+            color: Color::rgb(0.5, 0.5, 2.0),
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec3::new(0.0, 2.0, 0.0),
+            rotation: Quat::from_xyzw(-1.0, -0.3, 0.0, 0.0),
+            ..default()
+        },
+        ..default()
+    });
 }
 
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
-    time: Res<Time>,
     mut transforms: Query<&mut Transform>,
     game: ResMut<Game>,
     mut ext_forces: Query<&mut ExternalForce>,
@@ -74,26 +96,44 @@ fn keyboard_input_system(
     // Apply forces
     let forward_speed: f32 = 100.0;
     let backward_speed: f32 = -40.0;
+
+    ext_force.force = Vec3::ZERO;
+    ext_force.torque = Vec3::ZERO;
+
     if keyboard_input.pressed(KeyCode::W) {
         ext_force.force = transform.forward().mul(Vec3 { x: forward_speed, y: forward_speed, z: forward_speed });
-        ext_force.torque = Vec3::new(0.0, 0.0, 0.0);
     }
 
     if keyboard_input.pressed(KeyCode::S) {
         ext_force.force = transform.forward().mul(Vec3 { x: backward_speed, y: backward_speed, z: backward_speed });
-        ext_force.torque = Vec3::new(0.0, 0.0, 0.0);
     }
 
     let torque: f32 = 12.0;
 
+    if keyboard_input.pressed(KeyCode::Left) {
+        ext_force.torque = transform.rotation * Vec3::new(0.0, torque, 0.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::Right) {
+        ext_force.torque = Vec3::new(0.0, -torque, 0.0);
+    }
+
     if keyboard_input.pressed(KeyCode::A) {
-        ext_force.force = Vec3::new(0.0, 0.0, 0.0);
-        ext_force.torque = Vec3::new(0.0, torque, 0.0);
+        ext_force.torque = transform.rotation * Vec3::new(0.0, 0.0, torque);
     }
 
     if keyboard_input.pressed(KeyCode::D) {
-        ext_force.force = Vec3::new(0.0, 0.0, 0.0);
-        ext_force.torque = Vec3::new(0.0, -torque, 0.0);
+        ext_force.torque = transform.rotation * Vec3::new(0.0, 0.0, -torque);
+    }
+
+    let up_down_torque = 25.0;
+
+    if keyboard_input.pressed(KeyCode::Up) {
+        ext_force.torque = transform.rotation * Vec3::new(-up_down_torque, 0.0, 0.0);
+    }
+
+    if keyboard_input.pressed(KeyCode::Down) {
+        ext_force.torque = transform.rotation * Vec3::new(up_down_torque, 0.0, 0.0);
     }
 }
 
@@ -115,6 +155,7 @@ fn camera_target_car_system(
         }
     };
     game.camera_target.look_at = Some(car_transform.translation);
+    game.camera_target.up = Some(car_transform.up());
     game.camera_target.position = Some(car_transform.translation + car_transform.forward() * -20.0 + (car_transform.up() * 5.0));
 }
 
@@ -126,7 +167,9 @@ fn camera_target_target_system(
     let mut camera_transform = match transforms.get_mut(camera_entity) { Ok(x) => x, _ => { return; } };
     let camera_target_look_at = match game.camera_target.look_at { Some(x) => x, _ => { return; } };
     let camera_target_position = match game.camera_target.position { Some(x) => x, _ => { return; } };
-    camera_transform.look_at(camera_target_look_at, Vec3::Y);
+    let camera_target_up = match game.camera_target.up { Some(x) => x, _ => { return; } };
+
+    camera_transform.look_at(camera_target_look_at, camera_target_up);
     camera_transform.translation = camera_target_position;
 }
 
