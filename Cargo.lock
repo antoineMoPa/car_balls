@@ -1392,6 +1392,7 @@ dependencies = [
  "bevy",
  "bevy_rapier3d",
  "rapier3d 0.15.0",
+ "web-sys",
 ]
 
 [[package]]

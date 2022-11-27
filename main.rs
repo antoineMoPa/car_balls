@@ -1,5 +1,4 @@
 use std::{ops::Mul};
-
 use bevy::{
     input::{keyboard::KeyCode, Input},
     pbr::DirectionalLightShadowMap,
@@ -21,6 +20,7 @@ struct Game {
     camera: Option<Entity>,
 }
 
+
 fn main() {
     App::new()
         .init_resource::<Game>()
@@ -35,11 +35,37 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_dynamic_objects)
+        .add_startup_system(setup_window_size)
         .add_system(print_ball_altitude)
         .add_system(keyboard_input_system)
         .add_system(camera_target_car_system)
         .add_system(camera_target_target_system)
         .run();
+}
+
+fn setup_window_size(mut windows: ResMut<Windows>) {
+    let window = match windows.get_primary_mut() {
+        Some(window) => window,
+        _ => {
+            return;
+        }
+    };
+    let wasm_window = match web_sys::window() {
+        Some(wasm_window) => wasm_window,
+        _ => {
+            return;
+        }
+    };
+    let (target_width, target_height) = (
+        wasm_window.inner_width().unwrap().as_f64().unwrap() as f32,
+        wasm_window.inner_height().unwrap().as_f64().unwrap() as f32,
+    );
+
+    window.set_resolution(target_width, target_height);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn setup_window_size() {
 }
 
 fn setup_graphics(
