@@ -174,17 +174,13 @@ fn camera_target_target_system(
 }
 
 fn setup_dynamic_objects(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
-    /* Create the ground. */
+    // Create the ground.
     commands
         .spawn()
         .insert(Collider::cuboid(100.0, 0.1, 100.0))
         .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, -2.0, 0.0)));
 
-    /* Create the bouncing ball. */
     let my_gltf = asset_server.load("model.glb#Scene0");
-
-    // to position our 3d model, simply use the Transform
-    // in the SceneBundle
 
     game.player_car =
         Some(
