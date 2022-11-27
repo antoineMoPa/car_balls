@@ -126,40 +126,22 @@ fn keyboard_input_system(
     ext_force.force = Vec3::ZERO;
     ext_force.torque = Vec3::ZERO;
 
-    if keyboard_input.pressed(KeyCode::W) {
+    if keyboard_input.pressed(KeyCode::Up) {
         ext_force.force = transform.forward().mul(Vec3 { x: forward_speed, y: forward_speed, z: forward_speed });
     }
 
-    if keyboard_input.pressed(KeyCode::S) {
+    if keyboard_input.pressed(KeyCode::Down) {
         ext_force.force = transform.forward().mul(Vec3 { x: backward_speed, y: backward_speed, z: backward_speed });
     }
 
-    let torque: f32 = 12.0;
+    let torque: f32 = 32.0;
 
     if keyboard_input.pressed(KeyCode::Left) {
         ext_force.torque = transform.rotation * Vec3::new(0.0, torque, 0.0);
     }
 
     if keyboard_input.pressed(KeyCode::Right) {
-        ext_force.torque = Vec3::new(0.0, -torque, 0.0);
-    }
-
-    if keyboard_input.pressed(KeyCode::A) {
-        ext_force.torque = transform.rotation * Vec3::new(0.0, 0.0, torque);
-    }
-
-    if keyboard_input.pressed(KeyCode::D) {
-        ext_force.torque = transform.rotation * Vec3::new(0.0, 0.0, -torque);
-    }
-
-    let up_down_torque = 25.0;
-
-    if keyboard_input.pressed(KeyCode::Up) {
-        ext_force.torque = transform.rotation * Vec3::new(-up_down_torque, 0.0, 0.0);
-    }
-
-    if keyboard_input.pressed(KeyCode::Down) {
-        ext_force.torque = transform.rotation * Vec3::new(up_down_torque, 0.0, 0.0);
+        ext_force.torque = transform.rotation * Vec3::new(0.0, -torque, 0.0);
     }
 }
 
